@@ -38,15 +38,6 @@
 
 #define RED_LED      (*((volatile uint32_t *)(0x42000000 + (0x400253FC-0x40000000)*32 + 1*4)))
 #define GREEN_LED    (*((volatile uint32_t *)(0x42000000 + (0x400253FC-0x40000000)*32 + 3*4)))
-#define PUSH_BUTTON  (*((volatile uint32_t *)(0x42000000 + (0x400253FC-0x40000000)*32 + 4*4)))
-
-//#define MAX_CHARS        uint32_t       80
-//#define CARRIAGE_RETURN  uint8_t       13
-#define LINE_FEED        uint8_t       10
-//#define BACK_SPACE       uint8_t       8
-//#define SPACE            uint8_t       0x20
-#define COUNT            uint8_t       0
-
 
 uint32_t count= 0;
 uint32_t max_chars = 80;
@@ -54,7 +45,7 @@ uint32_t BACK_SPACE = 8;
 uint32_t SPACE = 0x20;
 uint32_t CARRIAGE_RETURN = 13;
 char strn;
-char str;
+char * str = &strn;
 //-----------------------------------------------------------------------------
 // Subroutines
 //-----------------------------------------------------------------------------
@@ -120,10 +111,7 @@ char getcUart0()
     return UART0_DR_R & 0xFF;
 }
 
-
-
-//MAX_CHARS =80;NUM0=0x30;NUM9= 0x39; UPPERA= 0x41; LOWERA =0x61;CARRIAGE_RETURN =13;LINE_FEED =10; BACK_SPACE= 8;SPACE= 0x20;NULL= 0x0
-
+// Blocking function that returns with serial data entered by user
 void getCommand()
 {
     char * strnPointer = &strn;
@@ -161,7 +149,6 @@ void serialCheck(void)
     while(1)
     {
         getCommand();
-        char * str = &strn;
         putsUart0(str);
         putsUart0("\r\n");
         count = 0;

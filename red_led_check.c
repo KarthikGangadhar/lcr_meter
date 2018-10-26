@@ -70,7 +70,7 @@ void ledCheck(void)
     // Initialize hardware
     initHw();
 
-    // Toggle red LED every second
+    // Toggle red LED every 500m second
     while(1)
     {
       RED_LED ^= 1;
