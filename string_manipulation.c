@@ -39,13 +39,21 @@
 #define RED_LED      (*((volatile uint32_t *)(0x42000000 + (0x400253FC-0x40000000)*32 + 1*4)))
 #define GREEN_LED    (*((volatile uint32_t *)(0x42000000 + (0x400253FC-0x40000000)*32 + 3*4)))
 
-uint32_t count= 0;
-uint32_t max_chars = 80;
-uint32_t BACK_SPACE = 8;
-uint32_t SPACE = 0x20;
-uint32_t CARRIAGE_RETURN = 13;
+// variables for getCommand
+uint32_t MAX_CHARS = 0X50;
+//#define BACK_SPACE          (*((volatile uint32_t *)0x08))
+//#define SPACE               (*((volatile uint32_t *)0x20))
+//#define CARRIAGE_RETURN     (*((volatile  uint32_t *)0x0D))
+
 char strn;
-char * str = &strn;
+char * strp = &strn;
+
+//parseStr valiables
+uint8_t argc = 0;
+uint8_t * pos[20];
+char * types[20];
+
+
 //-----------------------------------------------------------------------------
 // Subroutines
 //-----------------------------------------------------------------------------
@@ -114,24 +122,70 @@ char getcUart0()
 // Blocking function that returns with serial data entered by user
 void getCommand()
 {
-    char * strnPointer = &strn;
-    while(count < max_chars){
+    uint8_t count= 0;
+    while(count < 0x50){
         char c = getcUart0();
-        if(c == BACK_SPACE){
+        if(c == 0x08){ // if character is BACK_SPACE
             if(count > 0){
                 GREEN_LED = 0;
                 RED_LED ^= 1;
                 count = count - 1;
             }
-        }else if(c == CARRIAGE_RETURN){
-            strnPointer[count] = 0;
+        }else if(c == 0x0D){ //CARRIAGE_RETURN
+            strp[count] = 0x0;
             break;
-        }else if( c >= SPACE ){
-            strnPointer[count++] = c;
+        }else if( c >= 0x20 ){ // character value greater than SPACE.
+            strp[count++] = c;
             GREEN_LED ^= 1;
             RED_LED = 0;
         }
     }
+}
+
+// Blocking function that returns with serial data entered by user
+void parseStr()
+{
+    uint8_t count= 0;
+    uint8_t cmdLength = strlen(strp);
+    uint8_t cnt = 0;
+
+    while(count < cmdLength){
+        if((strp[count] >= 0x30 && strp[count] <= 0x39) || (strp[count] >= 0x41 && strp[count] <= 0x59) || (strp[count] >= 0x61 && strp[count] <= 0x7A)){
+            count += 1;
+        }
+        else{
+            strp[count++] = 0x20;
+        }
+    }
+
+//    uint8_t argCount = 0;
+    while(cnt < cmdLength){
+       if(cnt == 0 && strp[cnt] > 0x20 ){
+           pos[argc] = cnt;
+           // if chara is between 0 to 9
+           if( strp[cnt] >= 0x30 && strp[cnt] <= 0x39 ){
+               types[argc] = "number";
+           }
+           // if its between Ascii characters
+           else if(strp[cnt] >= 0x41){
+               types[argc] = "string";
+           }
+           argc += 1;
+       }else if(strp[cnt] == 0x20 && strp[cnt+1] > 0x20){
+           pos[argc] = cnt + 1;
+           // if character is between 0 to 9
+           if( strp[cnt+1] >= 0x30 || strp[cnt+1] <= 0x39 ){
+               types[argc] = "number";
+           }
+           // if its between Ascii characters
+           else if(strp[cnt+1] >= 0x41){
+               types[argc] = "string";
+           }
+           argc += 1;
+       }
+       cnt += 1;
+    }
+
 }
 
 //-----------------------------------------------------------------------------
@@ -149,8 +203,19 @@ void serialCheck(void)
     while(1)
     {
         getCommand();
-        putsUart0(str);
+        putsUart0(strp);
         putsUart0("\r\n");
-        count = 0;
+        parseStr();
+        putsUart0("\r\n");
+        putsUart0(strp);
+        putsUart0("\r\n");
+
+        // reset global fields
+        argc = 0;
+        uint8_t i = 0;
+        for(i=0; i<5; i++){
+            pos[i] = 0x00;
+            types[i] = 0x00;
+        }
     }
 }
