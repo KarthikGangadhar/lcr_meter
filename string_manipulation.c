@@ -34,25 +34,20 @@
 #include <stdint.h>
 #include <stdbool.h>
 #include <string.h>
+#include <ctype.h>
 #include "tm4c123gh6pm.h"
 
 #define RED_LED      (*((volatile uint32_t *)(0x42000000 + (0x400253FC-0x40000000)*32 + 1*4)))
 #define GREEN_LED    (*((volatile uint32_t *)(0x42000000 + (0x400253FC-0x40000000)*32 + 3*4)))
+#define BLUE_LED     (*((volatile uint32_t *)(0x42000000 + (0x400253FC-0x40000000)*32 + 8*4)))
 
 // variables for getCommand
-uint32_t MAX_CHARS = 0X50;
-//#define BACK_SPACE          (*((volatile uint32_t *)0x08))
-//#define SPACE               (*((volatile uint32_t *)0x20))
-//#define CARRIAGE_RETURN     (*((volatile  uint32_t *)0x0D))
-
 char strn;
 char * strp = &strn;
 
-//parseStr valiables
+//parseStr variables
 uint8_t argc = 0;
-uint8_t * pos[20];
-char * types[20];
-
+char * commandArgs[80];
 
 //-----------------------------------------------------------------------------
 // Subroutines
@@ -112,6 +107,7 @@ void putsUart0(char* str)
     for (i = 0; i < strlen(str); i++)
       putcUart0(str[i]);
 }
+
 // Blocking function that returns with serial data once the buffer is not empty
 char getcUart0()
 {
@@ -135,11 +131,20 @@ void getCommand()
             strp[count] = 0x0;
             break;
         }else if( c >= 0x20 ){ // character value greater than SPACE.
-            strp[count++] = c;
+            strp[count++] = tolower(c);
             GREEN_LED ^= 1;
             RED_LED = 0;
         }
     }
+}
+
+// re-initializes the global values to NULL values
+void resetCommandArguments(){
+    uint8_t i = 0;
+    for(i=0; i< 10; i++){
+        commandArgs[i] = 0x00;
+    }
+    argc = 0;
 }
 
 // Blocking function that returns with serial data entered by user
@@ -147,7 +152,7 @@ void parseStr()
 {
     uint8_t count= 0;
     uint8_t cmdLength = strlen(strp);
-    uint8_t cnt = 0;
+//    uint8_t cnt = 0;
 
     while(count < cmdLength){
         if((strp[count] >= 0x30 && strp[count] <= 0x39) || (strp[count] >= 0x41 && strp[count] <= 0x59) || (strp[count] >= 0x61 && strp[count] <= 0x7A)){
@@ -158,34 +163,38 @@ void parseStr()
         }
     }
 
-//    uint8_t argCount = 0;
-    while(cnt < cmdLength){
-       if(cnt == 0 && strp[cnt] > 0x20 ){
-           pos[argc] = cnt;
-           // if chara is between 0 to 9
-           if( strp[cnt] >= 0x30 && strp[cnt] <= 0x39 ){
-               types[argc] = "number";
-           }
-           // if its between Ascii characters
-           else if(strp[cnt] >= 0x41){
-               types[argc] = "string";
-           }
-           argc += 1;
-       }else if(strp[cnt] == 0x20 && strp[cnt+1] > 0x20){
-           pos[argc] = cnt + 1;
-           // if character is between 0 to 9
-           if( strp[cnt+1] >= 0x30 || strp[cnt+1] <= 0x39 ){
-               types[argc] = "number";
-           }
-           // if its between Ascii characters
-           else if(strp[cnt+1] >= 0x41){
-               types[argc] = "string";
-           }
-           argc += 1;
-       }
-       cnt += 1;
+    // Returns first token
+    if(strlen(strp) > 0){
+        char *token = strtok(strp, " ");
+        commandArgs[argc] = token;
+        while (token != 0x00)
+        {
+                argc += 1;
+                token = strtok(0x00, " ");
+                commandArgs[argc] = token;
+        }
     }
+}
 
+//Checks for valid command and return boolean value
+bool isCommand(uint8_t argCount){
+    uint8_t i = 0;
+    char * commands[7] = { "reset","voltage","resistor","capacitance","inductance","esr","auto" };
+    for(i=0; i < 7; i++ ){
+        if(!(strcmp(commandArgs[0],commands[i]))){
+            if(argCount > 0){
+                return true;
+            }else{
+                return false;
+            }
+        }
+    }
+    return false;
+}
+
+//returns arguments value based on the position
+char * getValue(argCount){
+    return commandArgs[argCount];
 }
 
 //-----------------------------------------------------------------------------
@@ -207,15 +216,20 @@ void serialCheck(void)
         putsUart0("\r\n");
         parseStr();
         putsUart0("\r\n");
-        putsUart0(strp);
-        putsUart0("\r\n");
+        GREEN_LED = 0;
 
-        // reset global fields
-        argc = 0;
-        uint8_t i = 0;
-        for(i=0; i<5; i++){
-            pos[i] = 0x00;
-            types[i] = 0x00;
+        //validate the entered command
+        if(isCommand(argc)){
+            GREEN_LED = 1;
+            RED_LED = 0;
+            putsUart0("Entered Command is VALID\r\n");
+        }else{
+            GREEN_LED = 0;
+            RED_LED = 1;
+            putsUart0("The Entered Command is NOT VALID\r\n");
         }
+
+        // re-initialize the global values
+        resetCommandArguments();
     }
 }
