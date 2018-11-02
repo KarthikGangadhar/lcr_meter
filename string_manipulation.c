@@ -39,7 +39,6 @@
 
 #define RED_LED      (*((volatile uint32_t *)(0x42000000 + (0x400253FC-0x40000000)*32 + 1*4)))
 #define GREEN_LED    (*((volatile uint32_t *)(0x42000000 + (0x400253FC-0x40000000)*32 + 3*4)))
-#define BLUE_LED     (*((volatile uint32_t *)(0x42000000 + (0x400253FC-0x40000000)*32 + 8*4)))
 
 // variables for getCommand
 char strn;
@@ -78,11 +77,24 @@ void initSerialHw()
     GPIO_PORTF_DEN_R = 0x1A;  // enable LEDs and pushbuttons
     GPIO_PORTF_PUR_R = 0x10;  // enable internal pull-up for push button
 
+    // Configure circuit output pins
+    GPIO_PORTA_DIR_R = 0x20; //bit 5 for output MEAS_C
+    GPIO_PORTA_DR2R_R = 0x0A; // set drive strength to 2mA
+    GPIO_PORTA_DEN_R = 0x20;  // enable PIN
+
+    GPIO_PORTD_DIR_R = 0x04; //bit 2 for output HiGHSIDE_R
+    GPIO_PORTA_DR2R_R = 0x04; // set drive strength to 2mA
+    GPIO_PORTA_DEN_R = 0x04;  // enable PIN 
+    
+    GPIO_PORTE_DIR_R = 0x32; //bits 1,4 and 5 for output INTEGRATE, MEAS_LR and LOWSIDE_R respectively
+    GPIO_PORTA_DR2R_R = 0x32; // set drive strength to 2mA
+    GPIO_PORTA_DEN_R = 0x32;  // enable PIN
+
     // Configure UART0 pins
     SYSCTL_RCGCUART_R |= SYSCTL_RCGCUART_R0;         // turn-on UART0, leave other uarts in same status
     GPIO_PORTA_DEN_R |= 3;                           // default, added for clarity
     GPIO_PORTA_AFSEL_R |= 3;                         // default, added for clarity
-    GPIO_PORTA_PCTL_R = GPIO_PCTL_PA1_U0TX | GPIO_PCTL_PA0_U0RX;
+    GPIO_PORTA_PCTL_R |= GPIO_PCTL_PA1_U0TX | GPIO_PCTL_PA0_U0RX;
 
     // Configure UART0 to 115200 baud, 8N1 format (must be 3 clocks from clock enable and config writes)
     UART0_CTL_R = 0;                                 // turn-off UART0 to allow safe programming
