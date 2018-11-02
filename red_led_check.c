@@ -44,36 +44,36 @@ void initHw()
     GPIO_PORTF_DEN_R |= 0x02;  // enable LED
 }
 
-// Approximate busy waiting (in units of microseconds), given a 40 MHz system clock
-void waitMicrosecond(uint32_t us)
-{
-    __asm("WMS_LOOP0:   MOV  R1, #6");          // 1
-    __asm("WMS_LOOP1:   SUB  R1, #1");          // 6
-    __asm("             CBZ  R1, WMS_DONE1");   // 5+1*3
-    __asm("             NOP");                  // 5
-    __asm("             NOP");                  // 5
-    __asm("             B    WMS_LOOP1");       // 5*2 (speculative, so P=1)
-    __asm("WMS_DONE1:   SUB  R0, #1");          // 1
-    __asm("             CBZ  R0, WMS_DONE0");   // 1
-    __asm("             NOP");                  // 1
-    __asm("             B    WMS_LOOP0");       // 1*2 (speculative, so P=1)
-    __asm("WMS_DONE0:");                        // ---
-                                                // 40 clocks/us + error
-}
-
-//-----------------------------------------------------------------------------
-// Main
-//-----------------------------------------------------------------------------
-
-void ledCheck(void)
-{
-    // Initialize hardware
-    initHw();
-
-    // Toggle red LED every 500m second
-    while(1)
-    {
-      RED_LED ^= 1;
-      waitMicrosecond(500000);
-    }
-}
+//// Approximate busy waiting (in units of microseconds), given a 40 MHz system clock
+//void waitMicrosecond(uint32_t us)
+//{
+//    __asm("WMS_LOOP0:   MOV  R1, #6");          // 1
+//    __asm("WMS_LOOP1:   SUB  R1, #1");          // 6
+//    __asm("             CBZ  R1, WMS_DONE1");   // 5+1*3
+//    __asm("             NOP");                  // 5
+//    __asm("             NOP");                  // 5
+//    __asm("             B    WMS_LOOP1");       // 5*2 (speculative, so P=1)
+//    __asm("WMS_DONE1:   SUB  R0, #1");          // 1
+//    __asm("             CBZ  R0, WMS_DONE0");   // 1
+//    __asm("             NOP");                  // 1
+//    __asm("             B    WMS_LOOP0");       // 1*2 (speculative, so P=1)
+//    __asm("WMS_DONE0:");                        // ---
+//                                                // 40 clocks/us + error
+//}
+//
+////-----------------------------------------------------------------------------
+//// Main
+////-----------------------------------------------------------------------------
+//
+//void ledCheck(void)
+//{
+//    // Initialize hardware
+//    initHw();
+//
+//    // Toggle red LED every 500m second
+//    while(1)
+//    {
+//      RED_LED ^= 1;
+//      waitMicrosecond(500000);
+//    }
+//}
