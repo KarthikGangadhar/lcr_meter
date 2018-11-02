@@ -158,8 +158,11 @@ void parseStr()
         if((strp[count] >= 0x30 && strp[count] <= 0x39) || (strp[count] >= 0x41 && strp[count] <= 0x59) || (strp[count] >= 0x61 && strp[count] <= 0x7A)){
             count += 1;
         }
-        else{
+        // ignore if character is "_" 
+        else if(strp[count] != 95){
             strp[count++] = 0x20;
+        }else{
+            count += 1;
         }
     }
 
@@ -176,16 +179,57 @@ void parseStr()
     }
 }
 
+//check if number
+bool isNumber(char * value){
+    uint8_t i = 0;
+
+    for(i = 0; i < strlen(value); i++ ){
+     // Iterate through each character and check its number
+        if(value[i] >= 0x30 && value[i] <= 0x39){
+            continue;
+        }else{
+            return false;
+        }
+    }
+    return true;
+}
+
 //Checks for valid command and return boolean value
 bool isCommand(uint8_t argCount){
     uint8_t i = 0;
-    char * commands[7] = { "reset","voltage","resistor","capacitance","inductance","esr","auto" };
+    char * commands[7] = { "set","reset","voltage","resistor","capacitance","inductance","esr","auto" };
+    char * outputs[5] = { "meas_lr","meas_c","highside_r","lowside_r","integrate"};
+
     for(i=0; i < 7; i++ ){
+
         if(!(strcmp(commandArgs[0],commands[i]))){
-            if(argCount > 0){
-                return true;
-            }else{
-                return false;
+
+            //1. Check for set command
+            if(!(strcmp(commandArgs[0],"set"))){
+                if(argCount == 3){
+                    //2. second argument lies within the expected output terminals
+                    uint8_t j = 0;
+                    for(j =0; j < 5; j++){
+                        if(!(strcmp(commandArgs[1],outputs[j]))){
+                            //3. if the third argument is a valid number
+                            if(isNumber(commandArgs[2])){
+                                return true;
+                            }else{
+                                return false;
+                            }
+                        }
+                    }
+                }else{
+                   return false;
+                }
+            }
+            //check for remaining commands
+            else{
+                if(argCount > 0){
+                   return true;
+                }else{
+                   return false;
+                }
             }
         }
     }
