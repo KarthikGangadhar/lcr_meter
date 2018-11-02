@@ -1,4 +1,4 @@
-// Serial Code
+// LCR meter Code
 // Karthik Gangadhar
 
 //-----------------------------------------------------------------------------
@@ -103,6 +103,11 @@ void initSerialHw()
     UART0_FBRD_R = 45;                               // round(fract(r)*64)=45
     UART0_LCRH_R = UART_LCRH_WLEN_8 | UART_LCRH_FEN; // configure for 8N1 w/ 16-level FIFO
     UART0_CTL_R = UART_CTL_TXE | UART_CTL_RXE | UART_CTL_UARTEN; // enable TX, RX, and module
+
+    //drive output pins to zero
+    GPIO_PORTA_DATA_R &= ~(0x20);
+    GPIO_PORTD_DATA_R &= ~(0x04);
+    GPIO_PORTE_DATA_R &= ~(0x32);
 }
 
 // Blocking function that writes a serial character when the UART buffer is not full
