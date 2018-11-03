@@ -41,8 +41,8 @@
 #define GREEN_LED    (*((volatile uint32_t *)(0x42000000 + (0x400253FC-0x40000000)*32 + 3*4)))
 
 // variables for getCommand
-char strn;
-char * strp = &strn;
+//char strn;
+char  strp[80]; // = &strn;
 
 //parseStr variables
 uint8_t argc = 0;
@@ -90,6 +90,11 @@ void initSerialHw()
     GPIO_PORTE_DR2R_R = 0x32; // set drive strength to 2mA
     GPIO_PORTE_DEN_R = 0x32;  // enable PIN
 
+    //drive output pins to zero
+    GPIO_PORTA_DATA_R &= ~(0x20);
+    GPIO_PORTD_DATA_R &= ~(0x04);
+    GPIO_PORTE_DATA_R &= ~(0x32);
+
     // Configure UART0 pins
     SYSCTL_RCGCUART_R |= SYSCTL_RCGCUART_R0;         // turn-on UART0, leave other uarts in same status
     GPIO_PORTA_DEN_R |= 3;                           // default, added for clarity
@@ -104,10 +109,25 @@ void initSerialHw()
     UART0_LCRH_R = UART_LCRH_WLEN_8 | UART_LCRH_FEN; // configure for 8N1 w/ 16-level FIFO
     UART0_CTL_R = UART_CTL_TXE | UART_CTL_RXE | UART_CTL_UARTEN; // enable TX, RX, and module
 
-    //drive output pins to zero
-    GPIO_PORTA_DATA_R &= ~(0x20);
-    GPIO_PORTD_DATA_R &= ~(0x04);
-    GPIO_PORTE_DATA_R &= ~(0x32);
+    // Configure AN10(PB4),AN11(PB5) as an analog input to DUT2,DUT1 respectively 
+//    SYSCTL_RCGCADC_R |= 1;                           // turn on ADC module 0 clocking
+//	GPIO_PORTB_AFSEL_R |= 0x30;                      // select alternative functions for AN11 nad AN10 (PB4,PB5)
+//    GPIO_PORTB_DEN_R &= ~0x30;                       // turn off digital operation on pin PB4,PB5
+//    GPIO_PORTB_AMSEL_R |= 0x30;                      // turn on analog operation on pin PB4,PB5
+//    ADC10_CC_R = ADC_CC_CS_SYSPLL;                    // select PLL as the time base (not needed, since default value)
+//    ADC10_ACTSS_R &= ~ADC_ACTSS_ASEN3;                // disable sample sequencer 3 (SS3) for programming
+//    ADC10_EMUX_R = ADC_EMUX_EM3_PROCESSOR;            // select SS3 bit in ADCPSSI as trigger
+//    ADC10_SSMUX3_R = 0;                               // set first sample to AN0
+//    ADC10_SSCTL3_R = ADC_SSCTL3_END0;                 // mark first sample as the end
+//    ADC10_ACTSS_R |= ADC_ACTSS_ASEN3;                 // enable SS3 for operation
+//
+//    ADC11_CC_R = ADC_CC_CS_SYSPLL;                    // select PLL as the time base (not needed, since default value)
+//    ADC11_ACTSS_R &= ~ADC_ACTSS_ASEN3;                // disable sample sequencer 3 (SS3) for programming
+//    ADC11_EMUX_R = ADC_EMUX_EM3_PROCESSOR;            // select SS3 bit in ADCPSSI as trigger
+//    ADC11_SSMUX3_R = 0;                               // set first sample to AN0
+//    ADC11_SSCTL3_R = ADC_SSCTL3_END0;                 // mark first sample as the end
+//    ADC11_ACTSS_R |= ADC_ACTSS_ASEN3;                 // enable SS3 for operation
+
 }
 
 // Blocking function that writes a serial character when the UART buffer is not full
@@ -130,6 +150,14 @@ char getcUart0()
 {
     while (UART0_FR_R & UART_FR_RXFE);
     return UART0_DR_R & 0xFF;
+}
+
+// To read Analog Input
+int16_t readAdc0Ss3()
+{
+    ADC0_PSSI_R |= ADC_PSSI_SS3;                     // set start bit
+    while (ADC0_ACTSS_R & ADC_ACTSS_BUSY);           // wait until SS3 is not busy
+    return ADC0_SSFIFO3_R;                           // get single result from the FIFO
 }
 
 // Blocking function that returns with serial data entered by user
@@ -169,7 +197,6 @@ void parseStr()
 {
     uint8_t count= 0;
     uint8_t cmdLength = strlen(strp);
-//    uint8_t cnt = 0;
 
     while(count < cmdLength){
         if((strp[count] >= 0x30 && strp[count] <= 0x39) || (strp[count] >= 0x41 && strp[count] <= 0x59) || (strp[count] >= 0x61 && strp[count] <= 0x7A)){
@@ -214,8 +241,8 @@ bool isNumber(char * value){
 //Checks for valid command and return boolean value
 bool isCommand(uint8_t argCount){
     uint8_t i = 0;
-    char * commands[7] = { "set","reset","voltage","resistor","capacitance","inductance","esr","auto" };
     char * outputs[5] = { "meas_lr","meas_c","highside_r","lowside_r","integrate"};
+    char * commands[8] = { "set","reset","voltage","resistor","capacitance","inductance","esr","auto" };
 
     for(i=0; i < 7; i++ ){
 
@@ -290,6 +317,48 @@ void ledCheck(void)
     }
 }
 
+bool ExecuteCommand(){
+    // if command is set and argument count is 3
+    if(!(strcmp(commandArgs[0],"set")) && argc == 3){
+             //2. second argument lies within the expected output terminals
+                 if(!(strcmp(commandArgs[1],"meas_lr"))){
+                     //3. if the third argument is a valid number
+                     if(!strcmp(commandArgs[2],"0")){
+                         GPIO_PORTE_DATA_R &= ~(0x10);
+                     }else if(!strcmp(commandArgs[2],"1")){
+                         GPIO_PORTE_DATA_R |= 0x10;
+                     }
+                 }else if(!(strcmp(commandArgs[1],"meas_c"))){
+                     if(!strcmp(commandArgs[2],"0")){
+                         GPIO_PORTA_DATA_R &= ~(0x20);
+                     }else if(!strcmp(commandArgs[2],"1")){
+                         GPIO_PORTA_DATA_R |= 0x20;
+                     }
+                 }else if(!(strcmp(commandArgs[1],"highside_r"))){
+                     if(!strcmp(commandArgs[2],"0")){
+                         GPIO_PORTD_DATA_R &= ~(0x04);
+                     }else if(!strcmp(commandArgs[2],"1")){
+                         GPIO_PORTD_DATA_R |= 0x04;
+                     }
+                 }else if(!(strcmp(commandArgs[1],"lowside_r"))){
+                     if(!strcmp(commandArgs[2],"0")){
+                         GPIO_PORTE_DATA_R &= ~(0x20);
+                     }else if(!strcmp(commandArgs[2],"1")){
+                         GPIO_PORTE_DATA_R |= 0x20;
+                     }
+                 }else if(!(strcmp(commandArgs[1],"integrate"))){
+                     if(!strcmp(commandArgs[2],"0")){
+                         GPIO_PORTE_DATA_R &= ~(0x02);
+                     }else if(!strcmp(commandArgs[2],"1")){
+                         GPIO_PORTE_DATA_R |= 0x02;
+                     }
+                }
+         }else{
+            return false;
+         }
+    return true;
+}
+
 //-----------------------------------------------------------------------------
 // Main
 //-----------------------------------------------------------------------------
@@ -316,6 +385,10 @@ void serialCheck(void)
             GREEN_LED = 1;
             RED_LED = 0;
             putsUart0("Entered Command is VALID\r\n");
+            if(ExecuteCommand())
+                putsUart0("Command Executed properly\r\n");
+            else
+                putsUart0("Command Execution failed\r\n");
         }else{
             GREEN_LED = 0;
             RED_LED = 1;
