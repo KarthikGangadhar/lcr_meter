@@ -7,6 +7,7 @@
 	<deviceEndianness value="little"/>
 	<codegenToolVersion value="18.1.2.LTS"/>
 	<isElfFormat value="true"/>
+	<connection value="common/targetdb/connections/Stellaris_ICDI_Connection.xml"/>
 	<linkerCommandFile value="tm4c123gh6pm.cmd"/>
 	<rts value="libc.a"/>
 	<createSlaveProjects value=""/>
